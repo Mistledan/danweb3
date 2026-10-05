@@ -18,3 +18,7 @@ next-env.d.ts
 Thumbs.db
 .vercel
 .env*
+
+# local dev server logs
+server*.log
+*.log
