@@ -146,7 +146,8 @@ export default function ParticleHero({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [supported, setSupported] = useState<boolean | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const revealedRef = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -189,8 +190,7 @@ export default function ParticleHero({
         probe.getContext("webgl2") !== null ||
         probe.getContext("webgl") !== null;
       if (!hasWebGL) {
-        setSupported(false);
-        return;
+                return;
       }
 
       // Wait for the webfont, otherwise the sample is taken with a fallback
@@ -203,8 +203,7 @@ export default function ParticleHero({
       const fontFamily = getComputedStyle(document.body).fontFamily;
       const sample = sampleText(name, fontFamily, budget);
       if (!sample) {
-        setSupported(false);
-        return;
+                return;
       }
 
       const count = sample.points.length / 2;
@@ -283,9 +282,7 @@ export default function ParticleHero({
       const points = new THREE.Points(geometry, material);
       group.add(points);
 
-      setSupported(true);
-
-      // When there is no animation loop the canvas must be repainted by hand,
+            // When there is no animation loop the canvas must be repainted by hand,
       // otherwise a resize wipes it and nothing ever draws again.
       let staticMode = false;
 
@@ -311,6 +308,8 @@ export default function ParticleHero({
         // No loop: paint once, then only repaint on resize or scroll.
         staticMode = true;
         resize();
+        revealedRef.current = true;
+        setRevealed(true);
         const st = ScrollTrigger.create({
           trigger: host,
           start: "top top",
@@ -339,7 +338,8 @@ export default function ParticleHero({
         trigger: host,
         start: "top top",
         end: "bottom top",
-        scrub: true,
+        // No animation is linked, so progress is read via onUpdate and scrub
+        // would be a no-op that only adds ticker work.
         onUpdate: (self) => {
           scrollState.progress = self.progress;
         },
@@ -373,6 +373,12 @@ export default function ParticleHero({
         camera.position.z = 9 - p * 1.2;
 
         renderer.render(scene, camera);
+
+        // Hand over from the text fallback once the name is readable.
+        if (!revealedRef.current && uniforms.uProgress.value > 0.3) {
+          revealedRef.current = true;
+          setRevealed(true);
+        }
       }
       raf = requestAnimationFrame(frame);
       cleanupFns.push(() => cancelAnimationFrame(raf));
@@ -389,8 +395,7 @@ export default function ParticleHero({
     init().catch(() => {
       // Any failure in the WebGL path falls back to the plain-text hero rather
       // than leaving an empty canvas.
-      setSupported(false);
-    });
+          });
 
     return () => {
       disposed = true;
@@ -401,13 +406,22 @@ export default function ParticleHero({
   }, [name]);
 
   return (
-    <div ref={containerRef} className={className}>
+    <div ref={containerRef} className={`relative ${className ?? ""}`}>
       <canvas ref={canvasRef} className="h-full w-full" aria-hidden="true" />
-      {supported === false && (
-        <p className="flex h-full items-center justify-center px-6 text-center font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
+
+      {/* Real text, painted immediately. It fades out once the particles have
+          formed the name, and stays put forever if WebGL is unavailable, so the
+          hero is never empty and never depends on WebGL to be readable. */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-out ${
+          revealed ? "opacity-0" : "opacity-100"
+        }`}
+      >
+        <p className="px-4 text-center font-display text-[13.5vw] font-bold leading-[0.95] tracking-tight text-ink sm:text-[10.5vw]">
           {name}
         </p>
-      )}
+      </div>
     </div>
   );
 }
