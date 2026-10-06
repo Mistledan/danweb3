@@ -1,27 +1,17 @@
-import {
-  About,
-  Contact,
-  Footer,
-  Hero,
-  Marquee,
-  Nav,
-  Projects,
-  ScrollProgress,
-  Skills,
-} from "@/components/Sections";
+import Cta from "@/components/Cta";
+import Footer from "@/components/Footer";
+import Hero from "@/components/Hero";
+import Process from "@/components/Process";
+import Proof from "@/components/Proof";
 
 export default function Page() {
   return (
     <>
-      <ScrollProgress />
-      <Nav />
       <main>
         <Hero />
-        <Marquee />
-        <About />
-        <Skills />
-        <Projects />
-        <Contact />
+        <Proof />
+        <Process />
+        <Cta />
       </main>
       <Footer />
     </>

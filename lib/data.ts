@@ -1,10 +1,11 @@
 // Edit this file to change the content of the whole site.
 //
-// IMPORTANT - projects:
-//   Every entry below has status: "in-progress". They were written to fill the
-//   grid and show layout, not to be passed off as finished client work.
-//   Replace each one with work you actually did and flip status to "shipped",
-//   or delete it before sending this site to anyone.
+// PROOF RULES
+//   The Proof section lists real work only. No placeholders, no demos, no
+//   projects you have not shipped. A prospect will ask about every entry, so
+//   an entry exists only if you can talk about it in detail.
+//   To add work: ship it first, then add it here with a live URL.
+
 export const profile = {
   name: "Daniel Odewole",
   role: "Web3 & full-stack developer",
@@ -15,8 +16,6 @@ export const profile = {
   email: "danielthecryptoguy@gmail.com",
 };
 
-// Social accounts rendered in the hero and footer.
-// Edit a handle here and it updates in every section at once.
 export const social = [
   { label: "X", handle: "@dantheweb3guy", href: "https://x.com/dantheweb3guy" },
   {
@@ -27,136 +26,57 @@ export const social = [
   { label: "GitHub", handle: "@Mistledan", href: "https://github.com/Mistledan" },
 ];
 
-// Infinite strip under the hero. Keep entries short so the marquee reads cleanly.
-export const marquee = [
-  "Next.js",
-  "React",
-  "TypeScript",
-  "Node.js",
-  "PostgreSQL",
-  "Tailwind CSS",
-  "viem",
-  "wagmi",
-  "Alchemy",
-  "GraphQL",
-  "Docker",
-  "Framer Motion",
-];
+export type Project = {
+  name: string;
+  whatItDoes: string;
+  problem: string;
+  stack: string[];
+  live?: string;
+  code?: string;
+};
 
-// What you actually offer, shown as tags under the About text.
-// These are drawn from your X bio ("websites and funnels for crypto teams").
-export const services = [
-  "Websites",
-  "Funnels",
-  "dApp frontends",
-  "Wallet integration",
-  "Token gating",
-  "Telegram bots",
-  "CMS setup",
-  "Analytics",
-];
-
-export const about = [
-  "I work across the whole stack and in crypto, which means I can carry a feature from the database schema, through the smart contract call, all the way to the pixel it lands on. That end-to-end ownership lets me make better trade-offs, because I can see the cost of a decision on both sides.",
-  "I started in Web3 business development, where I learned how projects actually reach people. That background still shapes how I build. Crypto users bounce fast and trust nothing, so I care about pages that load quickly, explain what they want, and make the next step obvious.",
-  "Since 2023 I've worked as a freelance developer, taking client projects from first sketch to live deployment. Right now I'm focused on websites, funnels and dApps for crypto teams. I'm open to remote roles and freelance work.",
-];
-
-export const skills = [
+/**
+ * Real, shipped work. Each entry must be something you actually built and can
+ * defend on a call.
+ */
+export const projects: Project[] = [
   {
-    group: "Frontend",
-    items: [
-      "Next.js",
-      "React",
-      "TypeScript",
-      "Tailwind CSS",
-      "Framer Motion",
-      "Accessibility",
-    ],
-  },
-  {
-    group: "Backend",
-    items: [
-      "Node.js",
-      "Express",
-      "REST APIs",
-      "PostgreSQL",
-      "MongoDB",
-      "Prisma",
-      "Redis",
-    ],
-  },
-  {
-    group: "Web3",
-    items: [
-      "wagmi",
-      "viem",
-      "Wallet connection",
-      "Alchemy",
-      "On-chain data",
-      "Solidity basics",
-      "Token gating",
-    ],
-  },
-  {
-    group: "Ship",
-    items: ["Git and GitHub", "Vercel", "Docker", "CI/CD", "CMS setup", "Analytics"],
-  },
-];
-
-export const projects = [
-  {
-    title: "Meridian Markets",
-    description:
-      "A crypto market dashboard where traders connect a wallet to track portfolio value, set price alerts and analyse pool liquidity, with live prices and on-chain data served by a Node.js backend and cached in Postgres.",
-    stack: ["Next.js", "wagmi", "viem", "Node.js", "PostgreSQL"],
-    status: "in-progress", // honest label: replace with "shipped" when real
-    live: "", // add the live URL
-    code: "",
-  },
-  {
-    title: "Whitelist Mint Page",
-    description:
-      "A token-gated launch page on Base Sepolia. Eligible wallets connect, pass a live on-chain eligibility check across two assets, then sign a message to prove ownership before their allocation is revealed. Read-only, so it never spends gas.",
+    name: "Whitelist Mint Page",
+    whatItDoes:
+      "A token-gated launch page on Base Sepolia. A visitor connects a wallet, passes a live eligibility check that reads two on-chain assets, then signs a message to prove ownership of the address before their allocation is revealed.",
+    problem:
+      "Gating a launch page usually means deploying a claim contract and trusting whatever arithmetic the browser reports. This proves both eligibility and ownership using read-only calls and a signature instead, so there is no contract to deploy and no gas to spend. The eligibility rule is a pure function, which makes it testable at the threshold and mirrorable in Solidity later.",
     stack: ["Next.js", "wagmi", "viem", "TanStack Query", "Tailwind"],
-    status: "shipped",
     live: "https://whitelist-mint-page.vercel.app",
     code: "https://github.com/Mistledan/whitelist-mint-page",
   },
+];
+
+export type Step = {
+  key: string;
+  title: string;
+  body: string;
+};
+
+// How the work actually runs: three stages, no mystery.
+export const process: Step[] = [
   {
-    title: "Telegram Deal Funnel",
-    description:
-      "A multi-step funnel that moves a visitor from a landing page into a Telegram community, with bot-driven verification and follow-up.",
-    stack: ["Next.js", "Node.js", "Telegram API", "PostgreSQL"],
-    status: "in-progress", // honest label: replace with "shipped" when real
-    live: "",
-    code: "",
+    key: "01",
+    title: "Audit",
+    body: "Before I write anything I map what exists: the code, the on-chain surface, the analytics, and where visitors drop off. You get the findings and a scoped plan, whether or not you hire me.",
   },
   {
-    title: "On-Chain Analytics API",
-    description:
-      "A REST service that indexes wallet activity and returns holder growth, whale movements and retention metrics on demand.",
-    stack: ["Node.js", "Express", "PostgreSQL", "Alchemy"],
-    status: "in-progress", // honest label: replace with "shipped" when real
-    live: "",
-    code: "",
+    key: "02",
+    title: "Build",
+    body: "Short cycles, working software at the end of each one. Frontend, backend and contract work happen in the same repo and the same review, so nothing gets lost between specialists.",
   },
   {
-    title: "Protocol Docs Site",
-    description:
-      "A documentation site for a DeFi protocol, with versioned guides, searchable reference content and live network data widgets.",
-    stack: ["Next.js", "MDX", "Tailwind", "Vercel"],
-    status: "in-progress", // honest label: replace with "shipped" when real
-    live: "",
-    code: "",
-  },
-  {
-    title: "Community Dashboard",
-    description:
-      "An internal dashboard for a crypto community, tracking member growth, engagement and campaign performance in one place.",
-    stack: ["React", "Node.js", "PostgreSQL", "Recharts"],
-    status: "in-progress", // honest label: replace with "shipped" when real
-    live: "",
-    code: "",
+    key: "03",
+    title: "Launch",
+    body: "Deploy, watch the real numbers, then iterate. I hand over the repo, the deploy pipeline and the keys, and I stay on to fix what the data shows is wrong.",
   },
 ];
+
+// Replace this mailto with your scheduling link (Calendly, Cal.com, etc).
+// The site reads this single value for the hero CTA and the closing CTA.
+export const bookingLink = `mailto:${profile.email}?subject=Book%20a%20call`;
