@@ -9,6 +9,10 @@
  *   3. A custom shader lerps each particle from a scattered start position to
  *      its target on the GPU, so the CPU does no per-particle work per frame.
  *
+ * Scroll parallax is read inside the render loop (scrollY / hero height) rather
+ * than via a scroll listener or an animation library, so the scrub costs a
+ * multiplication per frame and nothing else.
+ *
  * Mobile: the particle budget and device pixel ratio are both capped, rendering
  * pauses when the hero scrolls out of view or the tab is hidden, and
  * prefers-reduced-motion renders the finished name once with no animation loop.
@@ -169,11 +173,8 @@ export default function ParticleHero({
 
     async function init() {
       const THREE = await import("three");
-      const { gsap } = await import("gsap");
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
 
       if (disposed) return;
-      gsap.registerPlugin(ScrollTrigger);
 
       const isMobile = window.innerWidth < DESKTOP_BREAKPOINT;
       const budget = isMobile
@@ -190,7 +191,7 @@ export default function ParticleHero({
         probe.getContext("webgl2") !== null ||
         probe.getContext("webgl") !== null;
       if (!hasWebGL) {
-                return;
+        return;
       }
 
       // Wait for the webfont, otherwise the sample is taken with a fallback
@@ -203,7 +204,7 @@ export default function ParticleHero({
       const fontFamily = getComputedStyle(document.body).fontFamily;
       const sample = sampleText(name, fontFamily, budget);
       if (!sample) {
-                return;
+        return;
       }
 
       const count = sample.points.length / 2;
@@ -285,6 +286,7 @@ export default function ParticleHero({
             // When there is no animation loop the canvas must be repainted by hand,
       // otherwise a resize wipes it and nothing ever draws again.
       let staticMode = false;
+      let heroHeight = 1;
 
       function resize() {
         if (!renderer) return;
@@ -297,6 +299,7 @@ export default function ParticleHero({
         // Fit the name to the viewport without re-sampling on every resize.
         const fit = Math.min(width / 900, height / 460);
         group.scale.setScalar(Math.max(fit, 0.35));
+        heroHeight = height;
         if (staticMode) renderer.render(scene, camera);
       }
 
@@ -304,69 +307,52 @@ export default function ParticleHero({
       window.addEventListener("resize", resize);
       cleanupFns.push(() => window.removeEventListener("resize", resize));
 
+      // Progress of the hero scrolling out of view, matched to the behaviour
+      // GSAP ScrollTrigger's "start: top top / end: bottom top" produced:
+      // 0 while the hero sits at the top, 1 once it has fully scrolled past.
+      // Reading scrollY inside the existing render loop needs no listeners and
+      // forces no layout — ScrollTrigger's ticker did the same work at higher
+      // cost.
+      const scrollProgress = () =>
+        Math.min(Math.max(window.scrollY / heroHeight, 0), 1);
+
       if (reducedMotion) {
         // No loop: paint once, then only repaint on resize or scroll.
         staticMode = true;
         resize();
         revealedRef.current = true;
         setRevealed(true);
-        const st = ScrollTrigger.create({
-          trigger: host,
-          start: "top top",
-          end: "bottom top",
-          onUpdate: (self) => {
-            uniforms.uScroll.value = self.progress * -1.4;
-            group.rotation.y = self.progress * 0.12;
-            renderer!.render(scene, camera);
-          },
-        });
-        cleanupFns.push(() => st.kill());
+        const paintScroll = () => {
+          const p = scrollProgress();
+          uniforms.uScroll.value = p * -1.4;
+          group.rotation.y = p * 0.12;
+          renderer!.render(scene, camera);
+        };
+        window.addEventListener("scroll", paintScroll, { passive: true });
+        cleanupFns.push(() =>
+          window.removeEventListener("scroll", paintScroll),
+        );
         return;
       }
 
-      // Form the name on load.
-      gsap.to(uniforms.uProgress, {
-        value: 1,
-        duration: 2.6,
-        ease: "power3.out",
-      });
-
-      // Scroll-driven parallax. Scrubbing a proxy object keeps the render loop
-      // reading a plain number instead of querying ScrollTrigger each frame.
-      const scrollState = { progress: 0 };
-      const st = ScrollTrigger.create({
-        trigger: host,
-        start: "top top",
-        end: "bottom top",
-        // No animation is linked, so progress is read via onUpdate and scrub
-        // would be a no-op that only adds ticker work.
-        onUpdate: (self) => {
-          scrollState.progress = self.progress;
-        },
-      });
-      cleanupFns.push(() => st.kill());
-
-      let visible = true;
-      const io = new IntersectionObserver(
-        ([entry]) => {
-          visible = entry.isIntersecting;
-        },
-        { threshold: 0 },
-      );
-      io.observe(host);
-      cleanupFns.push(() => io.disconnect());
-
       const clock = new THREE.Clock();
+      const FORM_MS = 2600;
+      let formStart: number | null = null;
 
-      function frame() {
+      function frame(ts: number) {
         raf = requestAnimationFrame(frame);
         if (!renderer || !visible || document.hidden) return;
 
-        uniforms.uTime.value = clock.getElapsedTime();
-        uniforms.uScroll.value = scrollState.progress * -1.4;
+        // Form the name on load. power3.out is 1 - (1 - x)^3.
+        if (formStart === null) formStart = ts;
+        const t = Math.min((ts - formStart) / FORM_MS, 1);
+        uniforms.uProgress.value = 1 - Math.pow(1 - t, 3);
 
-        // Real 3D parallax: the field rotates and drifts against the scroll.
-        const p = scrollState.progress;
+        uniforms.uTime.value = clock.getElapsedTime();
+
+        // Real 3D parallax driven by the hero's own scroll position.
+        const p = scrollProgress();
+        uniforms.uScroll.value = p * -1.4;
         group.rotation.y = p * 0.42;
         group.rotation.x = p * 0.16;
         group.position.y = p * 0.9;
@@ -380,6 +366,16 @@ export default function ParticleHero({
           setRevealed(true);
         }
       }
+      let visible = true;
+      const io = new IntersectionObserver(
+        ([entry]) => {
+          visible = entry.isIntersecting;
+        },
+        { threshold: 0 },
+      );
+      io.observe(host);
+      cleanupFns.push(() => io.disconnect());
+
       raf = requestAnimationFrame(frame);
       cleanupFns.push(() => cancelAnimationFrame(raf));
 
@@ -393,9 +389,8 @@ export default function ParticleHero({
     }
 
     init().catch(() => {
-      // Any failure in the WebGL path falls back to the plain-text hero rather
-      // than leaving an empty canvas.
-          });
+      // Any failure in the WebGL path leaves the plain-text hero in place.
+    });
 
     return () => {
       disposed = true;
